@@ -3,91 +3,62 @@
 import numpy as np
 import rospy
 
-from gazebo_msgs.msg import ModelState, ModelStates
-from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
+from drift_simulator.msg import StateReward
+import environment as env
 
+class RL:
+    def __init__(self, nS: int, nA: int, gamma: float = 0.9, epsilon: float = 0.8, alpha: float = 0.1):
+        self.nS = nS
+        self.nA = nA
+        self.gamma = gamma
+        self.epsilon = epsilon
+        self.alpha = alpha
 
-def sarsa(
-    env, nS, nA, gamma=0.9, epsilon=0.8, alpha=0.1, max_steps=100, max_episodes=10000
-):
+        rospy.init_node("learner")
+        try:
+            self.q_function = np.loadtxt("../checkpoints/q.csv").resize((self.nS, self.nA))
+        except:
+            self.q_function = np.zeros((self.nS, self.nA))
+        try:
+            self.policy = np.loadtxt("../checkpoints/policy.csv")
+        except:
+            self.policy = np.zeros(self.nS)
 
-    """
-    Learn the action value function and policy by the sarsa
-    method for a given environment, gamma, epsilon, alpha, and a given
-    maximum number of episodes to train for, and a given maximum number
-    of steps to train for in an episode.
+        self.action_pub = rospy.Publisher("action", int, queue_size=10)
+        self.state_reward_sub = rospy.Subscriber("state_reward", StateReward, self.process_SR)
 
-    Parameters:
-    ----------
-    env: environment object (which is not the same as P) 
-    nS, nA, gamma: defined at beginning of file
-    episilon: for the epsilon greedy policy used
-    alpha: step update parameter
-    max_steps: maximum number of steps to train for in an episode
-    max_episodees: maximum number of episodes to train for
+        self.last_action = None
+        self.last_state = None
+    
+    def process_SR(self, data: StateReward):
+        r, s, t = data.reward, data.state, data.terminal
+        a = np.random.choice(self.nA) if np.random.random() < self.epsilon else self.policy[s]
+        if self.last_action is not None and self.last_state is not None:
+            self.update_model(r, s, a)
+        if t:
+            self.last_state = None
+            self.last_action = None
+        else:
+            self.last_state = s
+            self.last_action = a
+            self.action_pub.publish(self.last_action)
 
-    Returns:
-    ----------
-    q_function: np.ndarray[nS, nA]
-    policy: np.ndarray[nS]
-    """
-    q_function = np.zeros((nS, nA))
-    policy = np.zeros(nS, dtype=int)
-    for _ in range(max_episodes):
-        s = env.reset()
-        a = np.random.choice(nA) if np.random.random() < epsilon else policy[s]
-        for _ in range(max_steps):
-            s_p, r, is_terminal, _ = env.step(a)
-            a_p = np.random.choice(nA) if np.random.random() < epsilon else policy[s_p]
-            q_function[s, a] = q_function[s, a] + alpha * (
-                r + gamma * q_function[s_p, a_p] - q_function[s, a]
-            )
-            policy[s] = np.argmax(q_function[s])
-            s = s_p
-            a = a_p
-            if is_terminal:
-                break
-    return q_function, policy
+    def update_model(self, r: int, s: int, a: int):
+        pass
 
+class Sarsa(RL):
+    def update_model(self, r: int, s: int, a: int) -> None:
+        self.q_function[self.last_state, self.last_action] = self.q_function[self.last_state, self.last_action] + self.alpha * (
+            r + self.gamma * self.q_function[s, a] - self.q_function[self.last_state, self.last_action]
+        )
+        self.policy[self.last_state] = np.argmax(self.q_function[self.last_state])
 
-def q_learning(
-    env, nS, nA, gamma=0.9, epsilon=0.8, alpha=0.1, max_steps=100, max_episodes=10000
-):
+class QLearning(RL):
+    def update_model(self, r: int, s: int, a: int) -> None:
+        self.q_function[self.last_state, self.last_action] = self.q_function[self.last_state, self.last_action] + self.alpha * (
+            r
+            + self.gamma * np.max([self.q_function[s, a] for a in range(self.nA)])
+            - self.q_function[self.last_state, self.last_action]
+        )
+        self.policy[self.last_state] = np.argmax(self.q_function[self.last_state])
 
-    """
-    Learn the action value function and policy by the q-learning
-    method for a given environment, gamma, epsilon, alpha, and a given
-    maximum number of episodes to train for, and a given maximum number
-    of steps to train for in an episode.
-
-    Parameters:
-    ----------
-    env: environment object (which is not the same as P) 
-    nS, nA, gamma: defined at beginning of file
-    episilon: for the epsilon greedy policy used
-    alpha: step update parameter
-    max_steps: maximum number of steps to train for in an episode
-    max_episodees: maximum number of episodes to train for
-
-    Returns:
-    ----------
-    q_function: np.ndarray[nS, nA]
-    policy: np.ndarray[nS]
-    """
-    q_function = np.zeros((nS, nA))
-    policy = np.zeros(nS, dtype=int)
-    for _ in range(max_episodes):
-        s = env.reset()
-        for _ in range(max_steps):
-            a = np.random.choice(nA) if np.random.random() < epsilon else policy[s]
-            s_p, r, is_terminal, _ = env.step(a)
-            q_function[s, a] = q_function[s, a] + alpha * (
-                r
-                + gamma * np.max([q_function[s_p, a_p] for a_p in range(nA)])
-                - q_function[s, a]
-            )
-            policy[s] = np.argmax(q_function[s])
-            s = s_p
-            if is_terminal:
-                break
-    return q_function, policy
