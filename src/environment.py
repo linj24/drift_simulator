@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 import numpy as np
-from sensor_msgs.msg import LaserScan, Odometry
+from sensor_msgs.msg import LaserScan
+from nav_msgs.msg import Odometry
+from tf.transformations import euler_from_quaternion
 
 N_ACTIONS = 3
 
@@ -48,4 +50,9 @@ def calculate_state(
 
 
 def angle_between(odom: Odometry, point: tuple[float, float]) -> float:
-    pass
+    robot_pos = odom.pose.pose.position
+    point_angle = np.arctan2(point[1] - robot_pos.y, point[0] - robot_pos.x)
+
+    robot_heading = euler_from_quaternion(odom.pose.pose.orientation)[2]
+
+    return point_angle - robot_heading
