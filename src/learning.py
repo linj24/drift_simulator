@@ -4,7 +4,6 @@ import numpy as np
 import rospy
 
 from drift_simulator.msg import StateReward
-import environment as env
 
 class RL:
     def __init__(self, nS: int, nA: int, gamma: float = 0.9, epsilon: float = 0.8, alpha: float = 0.1):
