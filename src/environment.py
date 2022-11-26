@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 import numpy as np
-from std_msgs.msg import Header
+import rospy
+
+from std_msgs.msg import Duration
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
@@ -11,19 +13,19 @@ N_ACTIONS = 3
 
 N_CORNERS = 5
 N_GOALS = 5
-N_STATES = (N_CORNERS * N_GOALS) ** 2
+N_STATES = (N_CORNERS * N_GOALS) ** 2 * 8
 
 DIST_TO_WALL = 1
-
+TIME_TO_CHANGE = 1
 
 class State:
 
     corner: int
     goal: int
-    turned_corner: int
+    turned_corner: bool
     closest_side: bool
     within_dist: bool
-    last_timestamp: float
+    last_changed_timestamp: rospy.rostime.Time
     last_corner: int
     last_goal: int
 
@@ -33,12 +35,26 @@ class State:
         id = id * N_CORNERS + self.goal
         id = id * N_GOALS + self.last_corner
         id = id * N_CORNERS + self.last_goal
+        id = id * 2 + self.turned_corner
+        id = id * 2 + self.closest_side
+        id = id * 2 + self.within_dist
         return id
+
+    def __eq__(self, state: State) -> bool:
+        return (self.corner == state.corner
+        and self.goal == state.goal 
+        and self.turned_corner == state.turned_corner 
+        and self.closest_side == state.closest_side
+        and self.within_dist == state.within_dist
+        and self.last_changed_timestamp == state.last_changed_timestamp
+        and self.last_corner == state.last_corner
+        and self.last_goal == state.last_goal)
 
 
 def calculate_state(
     scan: LaserScan,
     dist_threshold: float,
+    time_threshold: Duration,
     odom: Odometry,
     corner: tuple[float, float],
     goal: tuple[float, float],
@@ -61,7 +77,23 @@ def calculate_state(
         else goal_angle < corner_angle
     )
 
-    cur_timestamp = odom.header.stamp
+    if last_state is not None:
+        state.last_changed_timestamp = last_state.last_changed_timestamp
+        state.last_corner = last_state.last_corner
+        state.last_goal = last_state.last_goal
+        time_diff = odom.header.stamp - last_state.last_changed_timestamp
+        if time_diff < time_threshold and last_state == state:
+            return state
+        else:
+            state.last_corner = last_state.corner
+            state.last_goal = last_state.goal
+    else:
+        state.last_corner = state.corner
+        state.last_goal = state.goal
+
+    state.last_changed_timestamp = odom.header.stamp
+    return state
+
 
 
 def angle_to_int(angle: float) -> int:
