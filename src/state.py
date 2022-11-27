@@ -4,9 +4,8 @@ from __future__ import annotations
 import numpy as np
 import rospy
 
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, Pose
 from sensor_msgs.msg import LaserScan
-from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 
 N_ACTIONS = 3
@@ -15,6 +14,7 @@ N_CORNERS = 5
 N_GOALS = 5
 # 2 terminal states, collision and goal
 N_STATES = (N_CORNERS * N_GOALS) ** 2 * 8 + 2
+
 
 class State:
 
@@ -39,19 +39,22 @@ class State:
         return id + 2
 
     def __eq__(self, state: State) -> bool:
-        return (self.corner == state.corner
-        and self.goal == state.goal 
-        and self.turned_corner == state.turned_corner 
-        and self.closest_side == state.closest_side
-        and self.within_dist == state.within_dist
-        and self.last_changed_timestamp == state.last_changed_timestamp
-        and self.last_corner == state.last_corner
-        and self.last_goal == state.last_goal)
+        return (
+            self.corner == state.corner
+            and self.goal == state.goal
+            and self.turned_corner == state.turned_corner
+            and self.closest_side == state.closest_side
+            and self.within_dist == state.within_dist
+            and self.last_changed_timestamp == state.last_changed_timestamp
+            and self.last_corner == state.last_corner
+            and self.last_goal == state.last_goal
+        )
 
 
 def calculate_state(
     scan: LaserScan,
-    odom: Odometry,
+    pose: Pose,
+    time: rospy.rostime.Time,
     dist_threshold: float,
     time_threshold: rospy.Duration,
     corner: Point,
@@ -65,8 +68,8 @@ def calculate_state(
     state.closest_side = bool(closest_angle < 180)
     state.within_dist = closest_dist < dist_threshold
 
-    goal_angle = angle_between(odom, goal)
-    corner_angle = angle_between(odom, corner)
+    goal_angle = angle_between(pose, goal)
+    corner_angle = angle_between(pose, corner)
     state.goal = angle_to_int(goal_angle)
     state.corner = angle_to_int(corner_angle)
     state.turned_corner = (last_state and last_state.turned_corner) or (
@@ -79,7 +82,7 @@ def calculate_state(
         state.last_changed_timestamp = last_state.last_changed_timestamp
         state.last_corner = last_state.last_corner
         state.last_goal = last_state.last_goal
-        time_diff = odom.header.stamp - last_state.last_changed_timestamp
+        time_diff = time - last_state.last_changed_timestamp
         if time_diff < time_threshold and last_state == state:
             return state
         else:
@@ -89,9 +92,8 @@ def calculate_state(
         state.last_corner = state.corner
         state.last_goal = state.goal
 
-    state.last_changed_timestamp = odom.header.stamp
+    state.last_changed_timestamp = time
     return state
-
 
 
 def angle_to_int(angle: float) -> int:
@@ -108,10 +110,10 @@ def angle_to_int(angle: float) -> int:
         return 4
 
 
-def angle_between(odom: Odometry, point: Point) -> float:
-    robot_pos = odom.pose.pose.position
+def angle_between(pose: Pose, point: Point) -> float:
+    robot_pos = pose.position
     point_angle = np.arctan2(point.y - robot_pos.y, point.x - robot_pos.x)
 
-    robot_heading = euler_from_quaternion(odom.pose.pose.orientation)[2]
+    robot_heading = euler_from_quaternion(pose.orientation)[2]
 
     return point_angle - robot_heading
