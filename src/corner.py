@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from gazebo_msgs.msg import ModelState, ModelStates
-from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
+from gazebo_msgs.msg import ModelState
+from geometry_msgs.msg import Point, Pose, Quaternion, Twist
 from tf.transformations import quaternion_from_euler
 
 WALL_HEIGHT = 1
@@ -39,14 +39,14 @@ class Wall:
         return self
 
     def collided(self, pos: Point) -> bool:
-        hyp_dist = np.linalg.norm(pos - self.center)
+        hyp_dist = np.sqrt((pos.x - self.center.x) ** 2 + (pos.y - self.center.y) ** 2 + (pos.z - self.center.z) ** 2)
         dist_perp = np.sin(self.angle) * hyp_dist
         dist_par = np.cos(self.angle) * hyp_dist
         return dist_perp < COLLISION_TOLERANCE and dist_par < self.length
 
     @property
     def model_state(self) -> ModelState:
-        ModelState(
+        return ModelState(
             model_name=self.model_name,
             pose=Pose(
                 position=self.center,

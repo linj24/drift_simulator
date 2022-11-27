@@ -112,7 +112,7 @@ class Environment:
                     s = state.calculate_state(
                         self.current_scan,
                         self.current_robot_pose,
-                        rospy.rostime.cur_time(),
+                        rospy.rostime.get_rostime(),
                         DIST_TO_WALL,
                         TIME_TO_CHANGE,
                         self.corner_position,
