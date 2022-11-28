@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 
+from enum import Enum
+
 import rospy
 from geometry_msgs.msg import Twist, Vector3
 
 LIN_VEL = 1.00
 ANG_VEL = 1.82
 
+class Turn(Enum):
+    STRAIGHT = 0
+    LEFT = 1
+    RIGHT = 2
 
 class Action:
     def __init__(self):
@@ -14,9 +20,9 @@ class Action:
         rospy.Subscriber("/action", int, self.perform_action)
 
     def perform_action(self, data: int) -> None:
-        if data == 0:
+        if data == Turn.LEFT.value:
             ang = ANG_VEL
-        elif data == 1:
+        elif data == Turn.RIGHT.value:
             ang = -ANG_VEL
         else:
             ang = 0

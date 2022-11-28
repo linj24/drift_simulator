@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
+
+from enum import Enum
 import numpy as np
 import rospy
 
@@ -10,29 +12,53 @@ from tf.transformations import euler_from_quaternion
 
 N_ACTIONS = 3
 
-N_CORNERS = 5
-N_GOALS = 5
-# 2 terminal states, collision and goal
-N_STATES = (N_CORNERS * N_GOALS) ** 2 * 8 + 2
 
+class Sector(Enum):
+    CENTER = 0
+    TOP_RIGHT = 1
+    TOP_LEFT = 2
+    BOT_RIGHT = 3
+    BOT_LEFT = 4
+
+# 2 terminal states, collision and goal
+N_STATES = (len(Sector) ** 2) ** 2 * 8 + 2
 
 class State:
 
-    corner: int
-    goal: int
+    corner: Sector
+    goal: Sector
     turned_corner: bool
     closest_side: bool
     within_dist: bool
     last_changed_timestamp: rospy.rostime.Time
-    last_corner: int
-    last_goal: int
+    last_corner: Sector
+    last_goal: Sector
+
+    @staticmethod
+    def from_id(id: int) -> State:
+        assert 0 <= id < N_STATES
+        state = State()
+        state.within_dist = id % 2
+        id //= 2
+        state.closest_side = id % 2
+        id //= 2
+        state.turned_corner = id % 2
+        id //= 2
+        state.last_goal = Sector(id % N_GOALS)
+        id //= N_GOALS
+        state.last_corner = Sector(id % N_CORNERS)
+        id //= N_CORNERS
+        state.last_goal = Sector(id % N_GOALS)
+        id //= N_GOALS
+        state.corner = Sector(id)
+        return state
 
     @property
     def id(self) -> int:
         id = self.corner
-        id = id * N_CORNERS + self.goal
-        id = id * N_GOALS + self.last_corner
-        id = id * N_CORNERS + self.last_goal
+        id = id * N_GOALS + self.goal
+        id = id * N_CORNERS + self.last_corner
+        id = id * N_GOALS + self.last_goal
         id = id * 2 + self.turned_corner
         id = id * 2 + self.closest_side
         id = id * 2 + self.within_dist
@@ -98,16 +124,16 @@ def calculate_state(
 
 def angle_to_int(angle: float) -> int:
     degrees = angle / (2 * np.pi) * 360
-    if 80 <= angle < 100:
-        return 0
-    elif 40 <= angle < 80:
-        return 1
-    elif 100 <= angle < 140:
-        return 2
-    elif -90 < angle < 40:
-        return 3
+    if -50 <= angle < -10:
+        return Sector.TOP_RIGHT.value
+    elif 10 <= angle < 50:
+        return Sector.TOP_LEFT.value
+    elif -180 < angle < -50:
+        return Sector.BOT_RIGHT.value
+    elif 50 <= angle < 180:
+        return Sector.BOT_LEFT.value
     else:
-        return 4
+        return Sector.CENTER.value
 
 
 def angle_between(pose: Pose, point: Point) -> float:
