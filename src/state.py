@@ -13,68 +13,158 @@ from tf.transformations import euler_from_quaternion
 N_ACTIONS = 3
 
 
-class Sector(Enum):
+def unit_circle_range(angle: float) -> float:
+    while angle > np.pi:
+        angle -= 2 * np.pi
+    while angle < -np.pi:
+        angle += 2 * np.pi
+    return angle
+
+
+class TargetSector(Enum):
     CENTER = 0
     TOP_RIGHT = 1
     TOP_LEFT = 2
     BOT_RIGHT = 3
     BOT_LEFT = 4
 
-# 2 terminal states, collision and goal
-N_STATES = (len(Sector) ** 2) ** 2 * 8 + 2
-
-class State:
-
-    corner: Sector
-    goal: Sector
-    turned_corner: bool
-    closest_side: bool
-    within_dist: bool
-    last_changed_timestamp: rospy.rostime.Time
-    last_corner: Sector
-    last_goal: Sector
+    @staticmethod
+    def from_angle(angle: float) -> TargetSector:
+        degrees = unit_circle_range(angle) / (2 * np.pi) * 360
+        if -50 <= degrees < -10:
+            return TargetSector.TOP_RIGHT
+        elif 10 <= degrees < 50:
+            return TargetSector.TOP_LEFT
+        elif -180 < degrees < -50:
+            return TargetSector.BOT_RIGHT
+        elif 50 <= degrees < 180:
+            return TargetSector.BOT_LEFT
+        else:
+            return TargetSector.CENTER
 
     @staticmethod
-    def from_id(id: int) -> State:
-        assert 0 <= id < N_STATES
-        state = State()
-        state.within_dist = id % 2
-        id //= 2
-        state.closest_side = id % 2
-        id //= 2
-        state.turned_corner = id % 2
-        id //= 2
-        state.last_goal = Sector(id % N_GOALS)
-        id //= N_GOALS
-        state.last_corner = Sector(id % N_CORNERS)
-        id //= N_CORNERS
-        state.last_goal = Sector(id % N_GOALS)
-        id //= N_GOALS
-        state.corner = Sector(id)
+    def embed(s: TargetSector, id: int) -> int:
+        return id * len(TargetSector) + s.value
+
+    @staticmethod
+    def extract(id: int) -> tuple[TargetSector, int]:
+        return TargetSector(id % len(TargetSector)), id // len(TargetSector)
+
+
+class ObstacleSector(Enum):
+    BEHIND = 0
+    LEFT = 1
+    RIGHT = 2
+
+    @staticmethod
+    def from_angle(angle: float) -> ObstacleSector:
+        degrees = unit_circle_range(angle) / (2 * np.pi) * 360
+        if -90 <= degrees < 0:
+            return ObstacleSector.RIGHT
+        elif 0 <= degrees < 90:
+            return ObstacleSector.LEFT
+        else:
+            return ObstacleSector.BEHIND
+
+    @staticmethod
+    def embed(s: ObstacleSector, id: int) -> int:
+        return id * len(ObstacleSector) + s.value
+
+    @staticmethod
+    def extract(id: int) -> tuple[ObstacleSector, int]:
+        return ObstacleSector(id % len(ObstacleSector)), id // len(ObstacleSector)
+
+
+class Terminal(Enum):
+    CRASH = 0
+    GOAL = 1
+
+    @property
+    def id(self) -> int:
+        return self.value
+
+
+# 2 terminal states, collision and goal
+N_NONTERMINAL = (len(TargetSector) ** 2 * len(ObstacleSector) * 2 * 2) ** 2
+N_STATES = N_NONTERMINAL + len(Terminal)
+
+
+class NonTerminal:
+    corner: TargetSector
+    goal: TargetSector
+    closest: ObstacleSector
+    within_dist: bool
+    turned_corner: bool
+    last_changed_timestamp: rospy.rostime.Time
+    last_state: NonTerminal | None
+
+    @staticmethod
+    def copy(state: NonTerminal) -> NonTerminal:
+        self = NonTerminal()
+        self.corner = state.corner
+        self.goal = state.goal
+        self.closest = state.closest
+        self.within_dist = state.within_dist
+        self.turned_corner = state.turned_corner
+        self.last_changed_timestamp = state.last_changed_timestamp
+        self.last_state = None
+        return self
+
+    @staticmethod
+    def from_id(id: int) -> NonTerminal:
+        assert 0 <= id < N_NONTERMINAL
+        state = NonTerminal()
+        last_state = NonTerminal()
+        last_state.last_state = None
+
+        last_state.turned_corner, id = bool(id % 2), id // 2
+        last_state.within_dist, id = bool(id % 2), id // 2
+        last_state.closest, id = ObstacleSector.extract(id)
+        last_state.goal, id = TargetSector.extract(id)
+        last_state.corner, id = TargetSector.extract(id)
+        state.turned_corner, id = bool(id % 2), id // 2
+        state.within_dist, id = bool(id % 2), id // 2
+        state.closest, id = ObstacleSector.extract(id)
+        state.goal, id = TargetSector.extract(id)
+        state.corner, _ = TargetSector.extract(id)
+
+        state.last_state = last_state
         return state
 
     @property
     def id(self) -> int:
-        id = self.corner
-        id = id * N_GOALS + self.goal
-        id = id * N_CORNERS + self.last_corner
-        id = id * N_GOALS + self.last_goal
-        id = id * 2 + self.turned_corner
-        id = id * 2 + self.closest_side
+        id = TargetSector.embed(self.corner, 0)
+        id = TargetSector.embed(self.goal, id)
+        id = ObstacleSector.embed(self.closest, id)
         id = id * 2 + self.within_dist
-        return id + 2
+        id = id * 2 + self.turned_corner
+        last_state = self.last_state if self.last_state is not None else self
+        id = TargetSector.embed(last_state.corner, id)
+        id = TargetSector.embed(last_state.goal, id)
+        id = ObstacleSector.embed(last_state.closest, id)
+        id = id * 2 + last_state.within_dist
+        id = id * 2 + last_state.turned_corner
+        return id
 
-    def __eq__(self, state: State) -> bool:
+    def __eq__(self, state: NonTerminal) -> bool:
         return (
             self.corner == state.corner
             and self.goal == state.goal
-            and self.turned_corner == state.turned_corner
-            and self.closest_side == state.closest_side
             and self.within_dist == state.within_dist
-            and self.last_changed_timestamp == state.last_changed_timestamp
-            and self.last_corner == state.last_corner
-            and self.last_goal == state.last_goal
+            and self.turned_corner == state.turned_corner
+            and self.closest == state.closest
         )
+
+
+class State:
+    state: NonTerminal | Terminal
+
+    @property
+    def id(self):
+        if isinstance(self.state, Terminal):
+            return self.state.id
+        else:
+            return len(Terminal) + self.state.id
 
 
 def calculate_state(
@@ -85,55 +175,59 @@ def calculate_state(
     time_threshold: rospy.Duration,
     corner: Point,
     goal: Point,
-    last_state: State | None,
-) -> State:
-    state = State()
+    last_state: NonTerminal | None,
+) -> NonTerminal:
+    state = NonTerminal()
 
-    closest_angle = np.argmin(scan.ranges)
-    closest_dist = scan.ranges[closest_angle]
-    state.closest_side = bool(closest_angle < 180)
-    state.within_dist = closest_dist < dist_threshold
+    state = extract_scan_info(state, scan, dist_threshold)
 
-    goal_angle = angle_between(pose, goal)
-    corner_angle = angle_between(pose, corner)
-    state.goal = angle_to_int(goal_angle)
-    state.corner = angle_to_int(corner_angle)
-    state.turned_corner = (last_state and last_state.turned_corner) or (
-        corner_angle < goal_angle
-        if -np.pi / 2 < corner_angle < np.pi / 2
-        else goal_angle < corner_angle
+    state = extract_pose_info(state, pose, corner, goal, last_state)
+
+    state.last_changed_timestamp = (
+        last_state.last_changed_timestamp if last_state is not None else time
     )
 
-    if last_state is not None:
-        state.last_changed_timestamp = last_state.last_changed_timestamp
-        state.last_corner = last_state.last_corner
-        state.last_goal = last_state.last_goal
-        time_diff = time - last_state.last_changed_timestamp
-        if time_diff < time_threshold and last_state == state:
-            return state
-        else:
-            state.last_corner = last_state.corner
-            state.last_goal = last_state.goal
-    else:
-        state.last_corner = state.corner
-        state.last_goal = state.goal
+    time_diff = time - state.last_changed_timestamp
+
+    if last_state is None:
+        last_state = NonTerminal.copy(state)
+    elif time_diff < time_threshold and last_state == state:
+        last_state = last_state.last_state
+
+    # we only update the last state if the state has changed or if enough time has elapsed
+    state.last_state = last_state
 
     state.last_changed_timestamp = time
     return state
 
 
-def angle_to_int(angle: float) -> int:
-    degrees = angle / (2 * np.pi) * 360
-    if -50 <= angle < -10:
-        return Sector.TOP_RIGHT.value
-    elif 10 <= angle < 50:
-        return Sector.TOP_LEFT.value
-    elif -180 < angle < -50:
-        return Sector.BOT_RIGHT.value
-    elif 50 <= angle < 180:
-        return Sector.BOT_LEFT.value
-    else:
-        return Sector.CENTER.value
+def extract_scan_info(
+    state: NonTerminal, scan: LaserScan, dist_threshold: float
+) -> NonTerminal:
+    closest_angle = np.argmin(scan.ranges)
+    closest_dist = scan.ranges[closest_angle]
+    state.closest = ObstacleSector(np.radians(closest_angle))
+    state.within_dist = closest_dist < dist_threshold
+    return state
+
+
+def extract_pose_info(
+    state: NonTerminal,
+    pose: Pose,
+    corner: Point,
+    goal: Point,
+    last_state: NonTerminal | None,
+) -> NonTerminal:
+    goal_angle = angle_between(pose, goal)
+    corner_angle = angle_between(pose, corner)
+    state.goal = TargetSector.from_angle(goal_angle)
+    state.corner = TargetSector.from_angle(corner_angle)
+    state.turned_corner = (last_state is not None and last_state.turned_corner) or (
+        corner_angle < goal_angle
+        if -np.pi / 2 < corner_angle < np.pi / 2
+        else goal_angle < corner_angle
+    )
+    return state
 
 
 def angle_between(pose: Pose, point: Point) -> float:
