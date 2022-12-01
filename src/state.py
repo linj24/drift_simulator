@@ -98,37 +98,29 @@ class NonTerminal:
     last_changed_timestamp: rospy.rostime.Time
     last_state: NonTerminal | None
 
-    @staticmethod
-    def copy(state: NonTerminal) -> NonTerminal:
-        self = NonTerminal()
-        self.corner = state.corner
-        self.goal = state.goal
-        self.closest = state.closest
-        self.within_dist = state.within_dist
-        self.turned_corner = state.turned_corner
-        self.last_changed_timestamp = state.last_changed_timestamp
-        self.last_state = None
-        return self
+    def __init__(self, state_id: int | None = None):
+        if state_id is not None:
+            id = state_id
+            assert 0 <= id < N_NONTERMINAL
+            last_state = NonTerminal()
+            last_state.last_state = None
 
-    @staticmethod
-    def from_id(id: int) -> NonTerminal:
-        assert 0 <= id < N_NONTERMINAL
-        state = NonTerminal()
-        last_state = NonTerminal()
-        last_state.last_state = None
+            last_state.turned_corner, id = bool(id % 2), id // 2
+            last_state.within_dist, id = bool(id % 2), id // 2
+            last_state.closest, id = ObstacleSector.extract(id)
+            last_state.goal, id = TargetSector.extract(id)
+            last_state.corner, id = TargetSector.extract(id)
+            self.turned_corner, id = bool(id % 2), id // 2
+            self.within_dist, id = bool(id % 2), id // 2
+            self.closest, id = ObstacleSector.extract(id)
+            self.goal, id = TargetSector.extract(id)
+            self.corner, _ = TargetSector.extract(id)
 
-        last_state.turned_corner, id = bool(id % 2), id // 2
-        last_state.within_dist, id = bool(id % 2), id // 2
-        last_state.closest, id = ObstacleSector.extract(id)
-        last_state.goal, id = TargetSector.extract(id)
-        last_state.corner, id = TargetSector.extract(id)
-        state.turned_corner, id = bool(id % 2), id // 2
-        state.within_dist, id = bool(id % 2), id // 2
-        state.closest, id = ObstacleSector.extract(id)
-        state.goal, id = TargetSector.extract(id)
-        state.corner, _ = TargetSector.extract(id)
+            self.last_state = last_state
 
-        state.last_state = last_state
+    def copy(self: NonTerminal) -> NonTerminal:
+        state = NonTerminal(self.id)
+        state.last_changed_timestamp = self.last_changed_timestamp
         return state
 
     @property
@@ -158,6 +150,14 @@ class NonTerminal:
 
 class State:
     state: NonTerminal | Terminal
+
+    def __init__(self, state_id: int):
+        id = state_id
+        assert 0 <= id < N_STATES
+        if id < len(Terminal):
+            self.state = Terminal(id)
+        else:
+            self.state = NonTerminal(id)
 
     @property
     def id(self):
@@ -190,7 +190,7 @@ def calculate_state(
     time_diff = time - state.last_changed_timestamp
 
     if last_state is None:
-        last_state = NonTerminal.copy(state)
+        last_state = state.copy()
     elif time_diff < time_threshold and last_state == state:
         last_state = last_state.last_state
 
