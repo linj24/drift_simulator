@@ -29,11 +29,23 @@ class CornerHeuristic(object):
 
             # approaching turn
             elif not s.turned_corner:
-                pass
+                if (
+                    s.corner == TargetSector.TOP_RIGHT
+                    or s.corner == TargetSector.BOT_RIGHT
+                ):
+                    a = Turn.RIGHT
+                elif (
+                    s.corner == TargetSector.TOP_LEFT
+                    or s.corner == TargetSector.BOT_LEFT
+                ):
+                    a = Turn.LEFT
 
             # after turn
             else:
-                pass
+                if s.goal == TargetSector.TOP_RIGHT or s.goal == TargetSector.BOT_RIGHT:
+                    a = Turn.RIGHT
+                elif s.goal == TargetSector.TOP_LEFT or s.goal == TargetSector.BOT_LEFT:
+                    a = Turn.LEFT
 
             self.action_pub.publish(a.value)
 
