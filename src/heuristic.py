@@ -16,7 +16,7 @@ class CornerHeuristic(object):
         )
 
     def handle_state_reward(self, data: StateReward):
-        s = State(data).state
+        s = State(data.state).state
         if isinstance(s, NonTerminal):
             a = Turn.STRAIGHT
 
