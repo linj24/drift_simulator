@@ -3,7 +3,9 @@
 from enum import Enum
 
 import rospy
+
 from geometry_msgs.msg import Twist, Vector3
+from std_msgs.msg import UInt8
 
 LIN_VEL = 1.00
 ANG_VEL = 1.82
@@ -17,7 +19,7 @@ class Action:
     def __init__(self):
         rospy.init_node("RL_action")
         self.cmd_vel = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
-        rospy.Subscriber("/action", int, self.perform_action)
+        rospy.Subscriber("/action", UInt8, self.perform_action)
 
     def perform_action(self, data: int) -> None:
         if data == Turn.LEFT.value:

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
+import numpy as np
 
 from gazebo_msgs.msg import ModelState, ModelStates
 from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
@@ -13,9 +14,6 @@ from corner import Corner
 
 DIST_TO_WALL = 1
 TIME_TO_CHANGE = rospy.Duration.from_sec(1)
-
-
-import numpy as np
 
 
 class Environment:
@@ -68,7 +66,6 @@ class Environment:
         robot_idx = data.name.index("turtlebot3")
         if robot_idx is not None and data.pose is not None:
             self.current_robot_pose = data.pose[robot_idx]
-            rospy.loginfo(f"At goal: {self.corners.at_goal(self.current_robot_pose)}")
 
     def reset_world(self):
         if not self.reset_world_in_progress:

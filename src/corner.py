@@ -1,7 +1,7 @@
 from __future__ import annotations
-
 from dataclasses import dataclass
 
+import rospy
 import numpy as np
 
 from gazebo_msgs.msg import ModelState
@@ -42,6 +42,7 @@ class Wall:
         hyp_dist = np.sqrt((pos.x - self.center.x) ** 2 + (pos.y - self.center.y) ** 2 + (pos.z - self.center.z) ** 2)
         dist_perp = np.sin(self.angle) * hyp_dist
         dist_par = np.cos(self.angle) * hyp_dist
+        rospy.loginfo(f"POINT: {pos}, CENTER: {self.center}, ANGLE: {self.angle}, PERP: {dist_perp}, PAR: {dist_par}")
         return dist_perp < COLLISION_TOLERANCE and dist_par < self.length
 
     @property
@@ -75,14 +76,14 @@ class Corner:
     def move(self, angle: float):
         # create corner out of 4 or 5 walls
         s1_x = self.s1.length / 2
-        s1_y = PATH_WIDTH / 2
-        s2_x = s1_x - s1_x * np.cos(angle)
-        s2_y = s1_y + s1_x * np.sin(angle)
-        n_x = s1_x + PATH_WIDTH * np.cos(angle / 2)
-        n_y = s1_y - PATH_WIDTH * np.sin(angle / 2)
-        l1_y = -PATH_WIDTH / 2
+        s1_y = np.sign(np.sin(angle)) * (- PATH_WIDTH / 2)
+        s2_x = self.s1.length + (self.s2.length / 2) * np.cos(angle)
+        s2_y = s1_y - (self.s2.length / 2) * np.sin(angle)
+        l1_y = -s1_y
         if np.abs(angle) < np.pi / 2:
             # add an extra wall for acute angles
+            n_x = self.s1.length + PATH_WIDTH * np.cos(angle / 2)
+            n_y = s1_y - PATH_WIDTH * np.sin(angle / 2)
             l1_x = n_x - (n_y + l1_y) * np.tan(angle / 2) - self.l1.length / 2
             l2_x = (
                 n_x
@@ -94,14 +95,11 @@ class Corner:
                 + (n_y + l1_y) * np.tan(angle / 2)
                 - (self.l1.length / 2) * np.sin(angle)
             )
-        else:
-            l1_x = n_x - self.l1.length / 2
-            l2_x = n_x - (self.l2.length / 2) * np.cos(angle)
-            l2_y = n_y + (self.l2.length / 2) * np.sin(angle)
-
-        if np.abs(angle) < np.pi / 2:
             n_angle = angle / 2 + np.pi / 2
         else:
+            l1_x = self.s1.length + PATH_WIDTH * np.tan((np.pi - angle) / 2) - (self.l1.length / 2)
+            l2_x = self.s1.length + PATH_WIDTH * np.tan((np.pi - angle) / 2) + (self.l2.length / 2) * np.cos(angle)
+            l2_y = l1_y - (self.l2.length / 2) * np.sin(angle)
             n_x = 15
             n_y = 0
             n_angle = 0
@@ -144,3 +142,6 @@ class Corner:
     def collided(self, pose: Pose) -> bool:
         robot_pos = pose.position
         return any([wall.collided(robot_pos) for wall in self.walls])
+
+if __name__ == "__main__":
+    c = Corner(np.pi/2)

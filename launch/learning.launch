@@ -1,4 +1,4 @@
 <launch>
-  <node name="corner_heuristic" pkg="drift_simulator" type="heuristic.py" output="screen"/>
+  <node name="learner" pkg="drift_simulator" type="learning.py" output="screen"/>
   <node name="RL_action" pkg="drift_simulator" type="action.py" output="screen"/>
 </launch>

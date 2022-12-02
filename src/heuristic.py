@@ -2,15 +2,18 @@
 
 import rospy
 
+from std_msgs.msg import UInt8
+
 from drift_simulator.msg import StateReward
-from state import State, NonTerminal, ObstacleSector, TargetSector
+
 from action import Turn
+from state import State, NonTerminal, ObstacleSector, TargetSector
 
 
-class CornerHeuristic(object):
+class CornerHeuristic:
     def __init__(self):
         rospy.init_node("corner_heuristic")
-        self.action_pub = rospy.Publisher("/action", int, queue_size=10)
+        self.action_pub = rospy.Publisher("/action", UInt8, queue_size=10)
         rospy.Subscriber(
             "/state_reward", StateReward, self.handle_state_reward, queue_size=1
         )
