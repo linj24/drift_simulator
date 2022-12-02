@@ -117,6 +117,8 @@ class NonTerminal:
             self.corner, _ = TargetSector.extract(id)
 
             self.last_state = last_state
+        else:
+            self.last_state = None
 
     def copy(self: NonTerminal) -> NonTerminal:
         state = NonTerminal(self.id)
@@ -206,7 +208,7 @@ def extract_scan_info(
 ) -> NonTerminal:
     closest_angle = np.argmin(scan.ranges)
     closest_dist = scan.ranges[closest_angle]
-    state.closest = ObstacleSector(np.radians(closest_angle))
+    state.closest = ObstacleSector.from_angle(np.radians(closest_angle))
     state.within_dist = closest_dist < dist_threshold
     return state
 
@@ -234,6 +236,6 @@ def angle_between(pose: Pose, point: Point) -> float:
     robot_pos = pose.position
     point_angle = np.arctan2(point.y - robot_pos.y, point.x - robot_pos.x)
 
-    robot_heading = euler_from_quaternion(pose.orientation)[2]
+    robot_heading = euler_from_quaternion([pose.orientation.w, pose.orientation.x, pose.orientation.y, pose.orientation.z])[2]
 
     return point_angle - robot_heading

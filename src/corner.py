@@ -39,10 +39,13 @@ class Wall:
         return self
 
     def collided(self, pos: Point) -> bool:
-        hyp_dist = np.sqrt((pos.x - self.center.x) ** 2 + (pos.y - self.center.y) ** 2 + (pos.z - self.center.z) ** 2)
-        dist_perp = np.sin(self.angle) * hyp_dist
-        dist_par = np.cos(self.angle) * hyp_dist
-        rospy.loginfo(f"POINT: {pos}, CENTER: {self.center}, ANGLE: {self.angle}, PERP: {dist_perp}, PAR: {dist_par}")
+        pos_to_center = np.array([self.center.x - pos.x, self.center.y - pos.y])
+        wall_vec = np.array([np.cos(self.angle), np.sin(self.angle)])
+        wall_proj = np.dot(wall_vec, pos_to_center) * wall_vec
+        dist_par = np.sqrt(np.dot(wall_proj, wall_proj))
+        dist_vec = pos_to_center - wall_proj
+        dist_perp = np.sqrt(np.dot(dist_vec, dist_vec))
+        rospy.loginfo(f"\nPOINT: \n{pos}\nCENTER: \n{self.center}\nANGLE: {self.angle:.3f}, PERP: {dist_perp:.3f}, PAR: {dist_par:.3f}, COLL: {dist_perp < COLLISION_TOLERANCE}, {dist_par < self.length}")
         return dist_perp < COLLISION_TOLERANCE and dist_par < self.length
 
     @property
@@ -126,9 +129,6 @@ class Corner:
         )
 
     def at_goal(self, pose: Pose) -> bool:
-        # rospy.loginfo(
-        #     f"Distance: {np.sqrt(((self.goal_position.x - pose.position.x) ** 2 + (self.goal_position.y - pose.position.y) ** 2))}"
-        # )
         return (
             np.sqrt(
                 (

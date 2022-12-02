@@ -117,7 +117,7 @@ class Environment:
                         self.last_state,
                     )
                     self.state_reward_pub.publish(
-                        StateReward(state=s, reward=0, terminal=False)
+                        StateReward(state=s.id, reward=0, terminal=False)
                     )
 
             r.sleep()
