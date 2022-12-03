@@ -20,7 +20,7 @@ class CornerHeuristic:
 
     def handle_state_reward(self, data: StateReward):
         s = State(data.state).state
-        rospy.loginfo(f"State: {s}")
+        # rospy.loginfo(f"State: {s}")
         if isinstance(s, NonTerminal):
             a = Turn.STRAIGHT
 
@@ -44,7 +44,7 @@ class CornerHeuristic:
                     a = Turn.RIGHT
                 elif s.goal == TargetSector.TOP_LEFT or s.goal == TargetSector.BOT_LEFT:
                     a = Turn.LEFT
-            rospy.loginfo(f"Action: {a}")
+            # rospy.loginfo(f"Action: {a}")
 
             self.action_pub.publish(a.value)
 

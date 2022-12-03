@@ -101,12 +101,12 @@ class Environment:
                     self.iteration_num += 1
                 elif self.corners.at_goal(self.current_robot_pose):
                     self.state_reward_pub.publish(
-                        StateReward(state=0, reward=100, terminal=True)
+                        StateReward(state=state.Terminal.GOAL.id, reward=100, terminal=True)
                     )
                     self.reset_world()
                 elif self.corners.collided(self.current_robot_pose):
                     self.state_reward_pub.publish(
-                        StateReward(state=1, reward=-1, terminal=True)
+                        StateReward(state=state.Terminal.CRASH.id, reward=-1, terminal=True)
                     )
                     self.reset_world()
                 else:
