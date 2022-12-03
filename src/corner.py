@@ -45,8 +45,9 @@ class Wall:
         dist_par = np.sqrt(np.dot(wall_proj, wall_proj))
         dist_vec = pos_to_center - wall_proj
         dist_perp = np.sqrt(np.dot(dist_vec, dist_vec))
-        rospy.loginfo(f"\nPOINT: \n{pos}\nCENTER: \n{self.center}\nANGLE: {self.angle:.3f}, PERP: {dist_perp:.3f}, PAR: {dist_par:.3f}, COLL: {dist_perp < COLLISION_TOLERANCE}, {dist_par < self.length}")
-        return dist_perp < COLLISION_TOLERANCE and dist_par < self.length
+        if dist_perp < COLLISION_TOLERANCE and dist_par < self.length / 2:
+            rospy.loginfo(f"\nPOINT: \n{pos}\nCENTER: \n{self.center}\nANGLE: {self.angle:.3f}, PERP: {dist_perp:.3f}, PAR: {dist_par:.3f}, COLL: {dist_perp < COLLISION_TOLERANCE}, {dist_par < self.length}")
+        return dist_perp < COLLISION_TOLERANCE and dist_par < self.length / 2
 
     @property
     def model_state(self) -> ModelState:
@@ -108,8 +109,8 @@ class Corner:
             n_angle = 0
 
         self.s1.move(Point(s1_x, s1_y, 0), 0)
-        self.s2.move(Point(s2_x, s2_y, 0), 0)
-        self.l1.move(Point(l1_x, l1_y, 0), angle)
+        self.s2.move(Point(s2_x, s2_y, 0), angle)
+        self.l1.move(Point(l1_x, l1_y, 0), 0)
         self.l2.move(Point(l2_x, l2_y, 0), angle)
         self.n.move(Point(n_x, n_y, 0), n_angle)
 
