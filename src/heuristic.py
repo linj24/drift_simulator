@@ -20,6 +20,7 @@ class CornerHeuristic:
 
     def handle_state_reward(self, data: StateReward):
         s = State(data.state).state
+        rospy.loginfo(f"State: {s}")
         if isinstance(s, NonTerminal):
             a = Turn.STRAIGHT
 
@@ -32,15 +33,9 @@ class CornerHeuristic:
 
             # approaching turn
             elif not s.turned_corner:
-                if (
-                    s.corner == TargetSector.TOP_RIGHT
-                    or s.corner == TargetSector.BOT_RIGHT
-                ):
+                if s.corner == TargetSector.BOT_RIGHT:
                     a = Turn.RIGHT
-                elif (
-                    s.corner == TargetSector.TOP_LEFT
-                    or s.corner == TargetSector.BOT_LEFT
-                ):
+                elif s.corner == TargetSector.BOT_LEFT:
                     a = Turn.LEFT
 
             # after turn
@@ -49,6 +44,7 @@ class CornerHeuristic:
                     a = Turn.RIGHT
                 elif s.goal == TargetSector.TOP_LEFT or s.goal == TargetSector.BOT_LEFT:
                     a = Turn.LEFT
+            rospy.loginfo(f"Action: {a}")
 
             self.action_pub.publish(a.value)
 

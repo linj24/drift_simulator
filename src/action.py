@@ -8,7 +8,7 @@ from geometry_msgs.msg import Twist, Vector3
 from std_msgs.msg import UInt8
 
 LIN_VEL = 1.00
-ANG_VEL = 1.82
+ANG_VEL = 1.50
 
 class Turn(Enum):
     STRAIGHT = 0
@@ -21,10 +21,10 @@ class Action:
         self.cmd_vel = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
         rospy.Subscriber("/action", UInt8, self.perform_action)
 
-    def perform_action(self, data: int) -> None:
-        if data == Turn.LEFT.value:
+    def perform_action(self, data: UInt8) -> None:
+        if data.data == Turn.LEFT.value:
             ang = ANG_VEL
-        elif data == Turn.RIGHT.value:
+        elif data.data == Turn.RIGHT.value:
             ang = -ANG_VEL
         else:
             ang = 0

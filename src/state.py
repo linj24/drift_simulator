@@ -149,6 +149,9 @@ class NonTerminal:
             and self.closest == state.closest
         )
 
+    def __repr__(self) -> str:
+        return f"STATE\n------\ncorner: {self.corner}\ngoal: {self.goal}\nclosest: {self.closest}\nwithin: {self.within_dist}\nturned: {self.turned_corner}\n"
+
 
 class State:
     state: NonTerminal | Terminal
@@ -220,22 +223,21 @@ def extract_pose_info(
     goal: Point,
     last_state: NonTerminal | None,
 ) -> NonTerminal:
-    goal_angle = angle_between(pose, goal)
-    corner_angle = angle_between(pose, corner)
+    goal_angle = unit_circle_range(angle_between(pose, goal))
+    rospy.loginfo(f"GOAL ANGLE: {unit_circle_range(goal_angle) / (2 * np.pi) * 360, goal_angle}")
+    corner_angle = unit_circle_range(angle_between(pose, corner))
+    rospy.loginfo(f"CORNER ANGLE: {unit_circle_range(corner_angle) / (2 * np.pi) * 360, corner_angle}")
     state.goal = TargetSector.from_angle(goal_angle)
     state.corner = TargetSector.from_angle(corner_angle)
-    state.turned_corner = (last_state is not None and last_state.turned_corner) or (
-        corner_angle < goal_angle
-        if -np.pi / 2 < corner_angle < np.pi / 2
-        else goal_angle < corner_angle
-    )
+    rospy.loginfo(f"TURNED: {last_state is not None}, {last_state is not None and last_state.turned_corner}, {np.abs(corner_angle) > np.abs(goal_angle)}")
+    state.turned_corner = last_state is not None and (last_state.turned_corner or (
+        np.abs(corner_angle) > np.abs(goal_angle)))
     return state
 
 
 def angle_between(pose: Pose, point: Point) -> float:
     robot_pos = pose.position
     point_angle = np.arctan2(point.y - robot_pos.y, point.x - robot_pos.x)
-
-    robot_heading = euler_from_quaternion([pose.orientation.w, pose.orientation.x, pose.orientation.y, pose.orientation.z])[2]
+    robot_heading = euler_from_quaternion([pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w])[2]
 
     return point_angle - robot_heading

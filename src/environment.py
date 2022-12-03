@@ -31,7 +31,7 @@ class Environment:
 
         # goal location
         self.goal_position = Point(x=7, y=-7, z=0)
-        self.corner_position = Point(x=2, y=-5, z=0)
+        self.corner_position = Point(x=5, y=-2, z=0)
 
         # flag to keep track of the state of when we're resetting the world and when we're not
         # to avoid sending too many duplicate messages
@@ -71,6 +71,10 @@ class Environment:
         if not self.reset_world_in_progress:
 
             self.reset_world_in_progress = True
+
+            self.current_robot_pose = None
+            self.current_scan = None
+            self.last_state = None
 
             # create new corner
             # self.generate_random_corner()
@@ -119,6 +123,7 @@ class Environment:
                     self.state_reward_pub.publish(
                         StateReward(state=s.id, reward=0, terminal=False)
                     )
+                    self.last_state = s
 
             r.sleep()
 
