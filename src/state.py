@@ -162,7 +162,7 @@ class State:
         if id < len(Terminal):
             self.state = Terminal(id)
         else:
-            self.state = NonTerminal(id)
+            self.state = NonTerminal(id - len(Terminal))
 
     @property
     def id(self):

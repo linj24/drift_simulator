@@ -46,7 +46,7 @@ class Wall:
         dist_vec = pos_to_center - wall_proj
         dist_perp = np.sqrt(np.dot(dist_vec, dist_vec))
         # if dist_perp < COLLISION_TOLERANCE and dist_par < self.length / 2:
-        rospy.loginfo(f"\nPOINT: \n{pos}\nCENTER: \n{self.center}\nANGLE: {self.angle:.3f}, PERP: {dist_perp:.3f}, PAR: {dist_par:.3f}, COLL: {dist_perp < COLLISION_TOLERANCE}, {dist_par < self.length}")
+        # rospy.loginfo(f"\nPOINT: \n{pos}\nCENTER: \n{self.center}\nANGLE: {self.angle:.3f}, PERP: {dist_perp:.3f}, PAR: {dist_par:.3f}, COLL: {dist_perp < COLLISION_TOLERANCE}, {dist_par < self.length}")
         return dist_perp < COLLISION_TOLERANCE and dist_par < self.length / 2
 
     @property
