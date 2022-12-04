@@ -78,6 +78,7 @@ class ObstacleSector(Enum):
 class Terminal(Enum):
     GOAL = 0
     CRASH = 1
+    TIMEOUT = 2
 
     @property
     def id(self) -> int:

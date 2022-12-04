@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import time
+
 import rospy
 import numpy as np
 
@@ -14,6 +16,7 @@ from corner import Corner
 
 DIST_TO_WALL = 1
 TIME_TO_CHANGE = rospy.Duration.from_sec(1)
+TIMEOUT = 15
 
 
 class Environment:
@@ -39,6 +42,7 @@ class Environment:
 
         # reinforcement learning algorithm iteration number
         self.iteration_num = 0
+        self.iteration_start = time.time()
 
         # ROS subscribers
         rospy.Subscriber(
@@ -94,19 +98,26 @@ class Environment:
         r = rospy.Rate(10)  # 10hz
         while not rospy.is_shutdown():
             if self.current_robot_pose is not None and self.current_scan is not None:
+                iteration_time = time.time() - self.iteration_start
                 if self.reset_world_in_progress and self.corners.at_start(
                     self.current_robot_pose
                 ):
                     self.reset_world_in_progress = False
                     self.iteration_num += 1
+                    self.iteration_start = time.time()
                 elif self.corners.at_goal(self.current_robot_pose):
                     self.state_reward_pub.publish(
-                        StateReward(state=state.Terminal.GOAL.id, reward=100, terminal=True)
+                        StateReward(state=state.Terminal.GOAL.id, reward=100 * (TIMEOUT - iteration_time), terminal=True)
                     )
                     self.reset_world()
                 elif self.corners.collided(self.current_robot_pose):
                     self.state_reward_pub.publish(
                         StateReward(state=state.Terminal.CRASH.id, reward=-1, terminal=True)
+                    )
+                    self.reset_world()
+                elif iteration_time > TIMEOUT:
+                    self.state_reward_pub.publish(
+                        StateReward(state=state.Terminal.TIMEOUT.id, reward=-1, terminal=True)
                     )
                     self.reset_world()
                 else:

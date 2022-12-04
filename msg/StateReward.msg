@@ -1,3 +1,3 @@
 uint32 state
-int16 reward
+float32 reward
 bool terminal

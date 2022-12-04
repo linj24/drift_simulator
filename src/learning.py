@@ -37,10 +37,10 @@ class RL:
         self.alpha = alpha
 
         rospy.init_node("learner")
-        self.q_function = np.loadtxt(Q_MATRIX_FILENAME, dtype=int)
+        self.q_function = np.loadtxt(Q_MATRIX_FILENAME)
         if np.shape(self.q_function) != (self.nS, self.nA):
             print("Creating default q function...")
-            self.q_function = np.zeros((self.nS, self.nA), dtype=int)
+            self.q_function = np.zeros((self.nS, self.nA))
         self.policy = np.loadtxt(POLICY_FILENAME, dtype=int)
         if np.shape(self.q_function) != (self.nS,):
             print("Creating default policy...")
@@ -74,14 +74,15 @@ class RL:
             self.last_action = None
             self.iteration += 1
             if self.iteration % SAVE_ITERATIONS == 0:
-                np.savetxt(Q_MATRIX_FILENAME, self.q_function, fmt='%i')
+                print(f"Checkpoint: iteration {self.iteration}")
+                np.savetxt(Q_MATRIX_FILENAME, self.q_function)
                 np.savetxt(POLICY_FILENAME, self.policy, fmt='%i')
         else:
             self.last_state = s
             self.last_action = a
             self.action_pub.publish(self.last_action)
 
-    def update_model(self, r: int, s: int, a: int):
+    def update_model(self, r: float, s: int, a: int):
         pass
 
     def run(self):
@@ -89,7 +90,7 @@ class RL:
 
 
 class Sarsa(RL):
-    def update_model(self, r: int, s: int, a: int) -> None:
+    def update_model(self, r: float, s: int, a: int) -> None:
         self.q_function[self.last_state, self.last_action] = self.q_function[
             self.last_state, self.last_action
         ] + self.alpha * (
@@ -101,7 +102,7 @@ class Sarsa(RL):
 
 
 class QLearning(RL):
-    def update_model(self, r: int, s: int, a: int) -> None:
+    def update_model(self, r: float, s: int, a: int) -> None:
         self.q_function[self.last_state, self.last_action] = self.q_function[
             self.last_state, self.last_action
         ] + self.alpha * (
