@@ -151,7 +151,8 @@ class NonTerminal:
         )
 
     def __repr__(self) -> str:
-        return f"STATE\n------\ncorner: {self.corner}\ngoal: {self.goal}\nclosest: {self.closest}\nwithin: {self.within_dist}\nturned: {self.turned_corner}\n"
+        return (f"STATE\n------\ncorner: {self.corner}\ngoal: {self.goal}\nclosest: {self.closest}\nwithin: {self.within_dist}\nturned: {self.turned_corner}\n" + 
+        f"LAST STATE\n------\n" + ("None" if self.last_state is None else f"corner: {self.last_state.corner}\ngoal: {self.last_state.goal}\nclosest: {self.last_state.closest}\nwithin: {self.last_state.within_dist}\nturned: {self.last_state.turned_corner}\n"))
 
 
 class State:

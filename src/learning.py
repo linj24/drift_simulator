@@ -17,17 +17,17 @@ import heuristic
 SAVE_ITERATIONS = 10
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(sys.argv[0])))
-Q_MATRIX_FILENAME = os.path.join(PARENT_DIR, "checkpoints", "q.csv")
-POLICY_FILENAME = os.path.join(PARENT_DIR, "checkpoints", "policy.csv")
+CHECKPOINT_DIR = os.path.join(PARENT_DIR, "checkpoints")
+Q_MATRIX_FILENAME = os.path.join(CHECKPOINT_DIR, "q.csv")
+POLICY_FILENAME = os.path.join(CHECKPOINT_DIR, "policy.csv")
 
-print(Q_MATRIX_FILENAME, POLICY_FILENAME)
 class RL:
     def __init__(
         self,
         nS: int,
         nA: int,
         gamma: float = 0.9,
-        epsilon: float = 0.8,
+        epsilon: float = 0.3,
         alpha: float = 0.1,
     ):
         self.nS = nS
@@ -37,12 +37,16 @@ class RL:
         self.alpha = alpha
 
         rospy.init_node("learner")
-        self.q_function = np.loadtxt(Q_MATRIX_FILENAME)
-        if np.shape(self.q_function) != (self.nS, self.nA):
+        try:
+            self.q_function = np.loadtxt(Q_MATRIX_FILENAME)
+        except OSError:
+        # if np.shape(self.q_function) != (self.nS, self.nA):
             print("Creating default q function...")
             self.q_function = np.zeros((self.nS, self.nA))
-        self.policy = np.loadtxt(POLICY_FILENAME, dtype=int)
-        if np.shape(self.q_function) != (self.nS,):
+        try:
+            self.policy = np.loadtxt(POLICY_FILENAME, dtype=int)
+        except OSError:
+        # if np.shape(self.q_function) != (self.nS,):
             print("Creating default policy...")
             self.policy = np.zeros(self.nS, dtype=int)
             for id in range(self.nS):
@@ -114,5 +118,5 @@ class QLearning(RL):
 
 
 if __name__ == "__main__":
-    node = Sarsa(state.N_STATES, len(action.Turn))
+    node = QLearning(state.N_STATES, len(action.Turn), epsilon=0.1)
     node.run()
