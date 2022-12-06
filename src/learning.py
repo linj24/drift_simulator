@@ -43,6 +43,10 @@ class RL:
         # if np.shape(self.q_function) != (self.nS, self.nA):
             print("Creating default q function...")
             self.q_function = np.zeros((self.nS, self.nA))
+            for id in range(self.nS):
+                action = heuristic.policy(id)
+                if action is not None:
+                    self.q_function[id, action] = 0.1
         try:
             self.policy = np.loadtxt(POLICY_FILENAME, dtype=int)
         except OSError:
@@ -66,11 +70,15 @@ class RL:
 
     def process_SR(self, data: StateReward):
         r, s, t = data.reward, data.state, data.terminal
-        a = (
-            np.random.choice(self.nA)
-            if np.random.random() < self.epsilon
-            else self.policy[s]
-        )
+        if np.random.random() < self.epsilon:
+            a = np.random.choice(self.nA)
+            # rospy.loginfo(f"RANDOM: {a}")
+        else:
+            a = self.policy[s]
+            # rospy.loginfo(f"H = {heuristic.policy(s)}")
+            # rospy.loginfo(f"A = {a}")
+            # rospy.loginfo(f"S = {s}")
+            # rospy.loginfo(state.State(s).state)
         if self.last_action is not None and self.last_state is not None:
             self.update_model(r, s, a)
         if t:

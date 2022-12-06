@@ -7,8 +7,8 @@ import rospy
 from geometry_msgs.msg import Twist, Vector3
 from std_msgs.msg import UInt8
 
-LIN_VEL = 1.00
-ANG_VEL = 1.50
+LIN_VEL = 0.80
+ANG_VEL = 1.30
 
 class Turn(Enum):
     STRAIGHT = 0

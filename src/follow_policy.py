@@ -25,7 +25,6 @@ class FollowPolicy:
 
     def process_SR(self, data: StateReward):
         r, s, t = data.reward, data.state, data.terminal
-        print(state.State(s).state)
         a = self.policy[s]
         print(a)
         self.action_pub.publish(a)
@@ -34,5 +33,5 @@ class FollowPolicy:
         rospy.spin()
 
 if __name__ == "__main__":
-    node = FollowPolicy("sarsa_0.9_0.8_0.1_3530")
+    node = FollowPolicy("qlearning_0.9_0.1_0.1_10430")
     node.run()
