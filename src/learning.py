@@ -133,5 +133,5 @@ class QLearning(RL):
 
 
 if __name__ == "__main__":
-    node = Sarsa(state.N_STATES, len(action.Turn), epsilon=0.1)
+    node = QLearning(state.N_STATES, len(action.Turn), epsilon=0.1)
     node.run()

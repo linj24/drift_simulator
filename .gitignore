@@ -132,4 +132,6 @@ dmypy.json
 .vscode/
 
 # Drift Simulator
-checkpoints/
+checkpoints/*
+!checkpoints/qlearning_1000
+!checkpoints/sarsa_1000

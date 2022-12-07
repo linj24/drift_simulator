@@ -33,5 +33,5 @@ class FollowPolicy:
         rospy.spin()
 
 if __name__ == "__main__":
-    node = FollowPolicy("qlearning_0.9_0.1_0.1_10430")
+    node = FollowPolicy("qlearning_1000")
     node.run()
