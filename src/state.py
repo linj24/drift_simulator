@@ -101,7 +101,7 @@ class NonTerminal:
 
     def __init__(self, state_id: int | None = None):
         if state_id is not None:
-            id = state_id
+            id = state_id - len(Terminal)
             assert 0 <= id < N_NONTERMINAL
             last_state = NonTerminal()
             last_state.last_state = None
@@ -139,7 +139,7 @@ class NonTerminal:
         id = ObstacleSector.embed(last_state.closest, id)
         id = id * 2 + last_state.within_dist
         id = id * 2 + last_state.turned_corner
-        return id
+        return id + len(Terminal)
 
     def __eq__(self, state: NonTerminal) -> bool:
         return (
@@ -164,14 +164,11 @@ class State:
         if id < len(Terminal):
             self.state = Terminal(id)
         else:
-            self.state = NonTerminal(id - len(Terminal))
+            self.state = NonTerminal(id)
 
     @property
     def id(self):
-        if isinstance(self.state, Terminal):
-            return self.state.id
-        else:
-            return len(Terminal) + self.state.id
+        return self.state.id
 
 
 def calculate_state(
