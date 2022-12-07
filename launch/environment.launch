@@ -1,0 +1,4 @@
+<launch>
+  <node name="drift_environment" pkg="drift_simulator" type="environment.py"
+  output="screen"/>
+</launch>

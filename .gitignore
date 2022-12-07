@@ -133,5 +133,6 @@ dmypy.json
 
 # Drift Simulator
 checkpoints/*
+!checkpoints/heuristic
 !checkpoints/qlearning_1000
 !checkpoints/sarsa_1000
