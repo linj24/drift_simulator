@@ -8,7 +8,7 @@ import numpy as np
 from std_msgs.msg import UInt8
 from drift_simulator.msg import StateReward
 
-import learning
+import utils.checkpoint
 
 class FollowPolicy:
     def __init__(self):
@@ -16,7 +16,7 @@ class FollowPolicy:
         rospy.init_node("follower")
         model_name = rospy.get_param('~model', "heuristic")
         rospy.loginfo(f"Loading model {model_name}...")
-        self.policy = np.loadtxt(os.path.join(learning.CHECKPOINT_DIR, model_name, "policy.csv"), dtype=int)
+        self.policy = np.loadtxt(os.path.join(utils.checkpoint.CHECKPOINT_DIR, model_name, "policy.csv"), dtype=int)
         self.action_pub = rospy.Publisher("/action", UInt8, queue_size=10)
         self.state_reward_sub = rospy.Subscriber(
             "/state_reward", StateReward, self.process_SR

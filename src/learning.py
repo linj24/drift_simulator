@@ -11,58 +11,56 @@ import numpy as np
 from std_msgs.msg import UInt8
 from drift_simulator.msg import StateReward
 
-import state
+import utils.state as state
 import action
+import utils.checkpoint as cp
 import heuristic
 
 # save q-matrix and policy after every 10 iterations
 SAVE_ITERATIONS = 10
-
-PARENT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(sys.argv[0])))
-CHECKPOINT_DIR = os.path.join(PARENT_DIR, "checkpoints")
-Q_MATRIX_FILENAME = os.path.join(CHECKPOINT_DIR, "q.csv")
-POLICY_FILENAME = os.path.join(CHECKPOINT_DIR, "policy.csv")
-POLICY_UPDATES_FILENAME = os.path.join(CHECKPOINT_DIR, "policy_updates.csv")
+DEFAULT_Q_VALUE = 0.5
 
 class RL(ABC):
     def __init__(
         self,
+        model: str,
         nS: int,
         nA: int,
         gamma: float = 0.9,
         epsilon: float = 0.3,
         alpha: float = 0.1,
     ):
+        self.model = model
         self.nS = nS
         self.nA = nA
         self.gamma = gamma
         self.epsilon = epsilon
         self.alpha = alpha
 
+        self.checkpoint = cp.Checkpoint(self.model, [cp.Metric.POLICY_UPDATES, cp.Metric.SUCCESSES, cp.Metric.TIMES])
+
         rospy.init_node("learner")
+
+        # load checkpoint data, initialize with heuristic if not available
         try:
-            self.q_function = np.loadtxt(Q_MATRIX_FILENAME)
+            self.q_function = np.loadtxt(self.checkpoint.checkpoint_filename("q"))
         except OSError:
-            print("Creating default q function...")
+            rospy.loginfo("Creating default q function...")
             self.q_function = np.zeros((self.nS, self.nA))
             for id in range(self.nS):
                 action = heuristic.policy(id)
                 if action is not None:
-                    self.q_function[id, action] = 0.1
+                    self.q_function[id, action] = DEFAULT_Q_VALUE
         try:
-            self.policy = np.loadtxt(POLICY_FILENAME, dtype=int)
+            self.policy = np.loadtxt(self.checkpoint.checkpoint_filename("policy"), dtype=int)
         except OSError:
-            print("Creating default policy...")
+            rospy.loginfo("Creating default policy...")
             self.policy = np.zeros(self.nS, dtype=int)
             for id in range(self.nS):
                 action = heuristic.policy(id)
                 if action is not None:
                     self.policy[id] = action
-        try:
-            self.policy_updates = list(np.loadtxt(POLICY_UPDATES_FILENAME, dtype=int))
-        except OSError:
-            print("Creating default policy updates...")
-            self.policy_updates = []
+
 
         self.action_pub = rospy.Publisher("/action", UInt8, queue_size=10)
         self.state_reward_sub = rospy.Subscriber(
@@ -72,6 +70,7 @@ class RL(ABC):
         self.last_action = None
         self.last_state = None
         self.updates_in_current_episode = 0
+        self.iteration_start = rospy.Time.now()
 
         self.iteration = 0
 
@@ -79,13 +78,8 @@ class RL(ABC):
         r, s, t = data.reward, data.state, data.terminal
         if np.random.random() < self.epsilon:
             a = np.random.choice(self.nA)
-            # rospy.loginfo(f"RANDOM: {a}")
         else:
             a = self.policy[s]
-            # rospy.loginfo(f"H = {heuristic.policy(s)}")
-            # rospy.loginfo(f"A = {a}")
-            # rospy.loginfo(f"S = {s}")
-            # rospy.loginfo(state.State(s).state)
         if self.last_action is not None and self.last_state is not None:
             self.q_function[self.last_state, self.last_action] = self.q_function[
                 self.last_state, self.last_action
@@ -101,18 +95,25 @@ class RL(ABC):
         if t:
             self.last_state = None
             self.last_action = None
-            self.policy_updates.append(self.updates_in_current_episode)
+            self.checkpoint.add_datapoint(cp.Metric.POLICY_UPDATES, self.updates_in_current_episode)
             self.updates_in_current_episode = 0
+            self.checkpoint.add_datapoint(cp.Metric.SUCCESSES, t is state.Terminal.GOAL)
+            self.checkpoint.add_datapoint(cp.Metric.TIMES, (rospy.Time.now() - self.iteration_start).to_sec())
+            self.iteration_start = rospy.Time.now()
             self.iteration += 1
             if self.iteration % SAVE_ITERATIONS == 0:
                 print(f"Checkpoint: iteration {self.iteration}")
-                np.savetxt(Q_MATRIX_FILENAME, self.q_function)
-                np.savetxt(POLICY_FILENAME, self.policy, fmt='%i')
-                np.savetxt(POLICY_UPDATES_FILENAME, self.policy_updates, fmt='%i')
+                np.savetxt(self.checkpoint.checkpoint_filename("q"), self.q_function)
+                np.savetxt(self.checkpoint.checkpoint_filename("policy"), self.policy, fmt='%i')
+                self.checkpoint.save_checkpoint()
         else:
             self.last_state = s
             self.last_action = a
             self.action_pub.publish(self.last_action)
+
+    @abstractmethod 
+    def name(self) -> str:
+        pass
 
     @abstractmethod 
     def next_action_value(self, s: int, a: int) -> float:
@@ -123,15 +124,21 @@ class RL(ABC):
 
 
 class Sarsa(RL):
+    def name(self) -> str:
+        return "sarsa"
+
     def next_action_value(self, s: int, a: int) -> float:
         return self.q_function[s, a]
 
 
 class QLearning(RL):
+    def name(self) -> str:
+        return "qlearning"
+
     def next_action_value(self, s: int, a: int) -> float:
         return np.max([self.q_function[s, a] for a in range(self.nA)])
 
 
 if __name__ == "__main__":
-    node = Sarsa(state.N_STATES, len(action.Turn), epsilon=0.1)
+    node = QLearning("qlearning_0.5_q", state.N_STATES, len(action.Turn), epsilon=0.1)
     node.run()

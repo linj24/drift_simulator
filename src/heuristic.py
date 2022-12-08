@@ -9,7 +9,7 @@ from std_msgs.msg import UInt8
 from drift_simulator.msg import StateReward
 
 from action import Turn
-from state import State, Terminal, NonTerminal, ObstacleSector, TargetSector
+from utils.state import State, NonTerminal, ObstacleSector, TargetSector
 
 def policy(state_id: int) -> int | None:
     s = State(state_id).state

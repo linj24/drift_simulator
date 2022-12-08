@@ -8,21 +8,24 @@ from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
 from sensor_msgs.msg import LaserScan
 from drift_simulator.msg import StateReward
 
-import state
-from corner import Corner
+import utils.state as state
+from utils.corner import Corner
 
 
 DIST_TO_WALL = 1
-TIME_TO_CHANGE = rospy.Duration(1)
-TIMEOUT = rospy.Duration(15)
+TIME_TO_CHANGE = rospy.Duration(secs=1)
+TIMEOUT = rospy.Duration(secs=12)
 
 
 class Environment:
+    """
+    """
     def __init__(self):
 
         # initialize this node
         rospy.init_node("drift_environment")
 
+        # model the corner as a group of walls at an angle
         self.corners = Corner(np.pi / 2)
 
         # reset position and orientation of the robot
@@ -34,8 +37,7 @@ class Environment:
         self.goal_position = Point(x=7, y=-7, z=0)
         self.corner_position = Point(x=5, y=-2, z=0)
 
-        # flag to keep track of the state of when we're resetting the world and when we're not
-        # to avoid sending too many duplicate messages
+        # flag to avoid sending too many duplicate messages
         self.reset_world_in_progress = False
 
         # reinforcement learning algorithm iteration number
@@ -62,14 +64,31 @@ class Environment:
         self.last_state = None
 
     def handle_scan(self, scan: LaserScan) -> None:
+        """Update the node with the most recent Lidar scan.
+
+        Parameters
+        ----------
+        scan : LaserScan
+            most recent Lidar scan
+        """
         self.current_scan = scan
 
-    def handle_model_states(self, data: ModelStates):
+    def handle_model_states(self, data: ModelStates) -> None:
+        """Update the node with the most recent Turtlebot3 pose in Gazebo.
+
+        Parameters
+        ----------
+        data : ModelStates
+            most recent Gazebo model states
+        """
         robot_idx = data.name.index("turtlebot3")
         if robot_idx is not None and data.pose is not None:
             self.current_robot_pose = data.pose[robot_idx]
 
-    def reset_world(self):
+    def reset_world(self) -> None:
+        """Reset the world by moving the robot back to the start and clearing
+        internal state.
+        """
         if not self.reset_world_in_progress:
 
             self.reset_world_in_progress = True
@@ -77,9 +96,6 @@ class Environment:
             self.current_robot_pose = None
             self.current_scan = None
             self.last_state = None
-
-            # create new corner
-            # self.generate_random_corner()
 
             # reset robot position
             p = Pose(
@@ -104,8 +120,9 @@ class Environment:
                     self.iteration_num += 1
                     self.iteration_start = rospy.Time.now()
                 elif self.corners.at_goal(self.current_robot_pose):
+                    print(f"GOAL: {iteration_time.to_sec()}")
                     self.state_reward_pub.publish(
-                        StateReward(state=state.Terminal.GOAL.id, reward=100 * (TIMEOUT - iteration_time).to_sec(), terminal=True)
+                        StateReward(state=state.Terminal.GOAL.id, reward=200 * (TIMEOUT - iteration_time).to_sec(), terminal=True)
                     )
                     self.reset_world()
                 elif self.corners.collided(self.current_robot_pose):
@@ -114,6 +131,7 @@ class Environment:
                     )
                     self.reset_world()
                 elif iteration_time > TIMEOUT:
+                    print(f"TIMEOUT: {iteration_time.to_sec()}")
                     self.state_reward_pub.publish(
                         StateReward(state=state.Terminal.TIMEOUT.id, reward=-1, terminal=True)
                     )

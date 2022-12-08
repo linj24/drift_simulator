@@ -1,7 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-import rospy
 import numpy as np
 
 from gazebo_msgs.msg import ModelState
@@ -22,7 +21,7 @@ WALL_LENS = [
 ]
 
 GOAL_TOLERANCE = 1
-COLLISION_TOLERANCE = 0.5
+COLLISION_TOLERANCE = 0.2
 
 
 @dataclass
@@ -45,9 +44,7 @@ class Wall:
         dist_par = np.sqrt(np.dot(wall_proj, wall_proj))
         dist_vec = pos_to_center - wall_proj
         dist_perp = np.sqrt(np.dot(dist_vec, dist_vec))
-        # if dist_perp < COLLISION_TOLERANCE and dist_par < self.length / 2:
-        # rospy.loginfo(f"\nPOINT: \n{pos}\nCENTER: \n{self.center}\nANGLE: {self.angle:.3f}, PERP: {dist_perp:.3f}, PAR: {dist_par:.3f}, COLL: {dist_perp < COLLISION_TOLERANCE}, {dist_par < self.length}")
-        return dist_perp < COLLISION_TOLERANCE and dist_par < self.length / 2
+        return dist_perp < COLLISION_TOLERANCE and dist_par < self.length / 2 + COLLISION_TOLERANCE
 
     @property
     def model_state(self) -> ModelState:
