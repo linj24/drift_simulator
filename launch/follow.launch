@@ -1,5 +1,8 @@
 <launch>
+  <arg name="model" default="heuristic"/>
   <node name="drift_environment" pkg="drift_simulator" type="environment.py" output="screen"/>
-  <node name="follower" pkg="drift_simulator" type="follow_policy.py" output="screen"/>
+  <node name="follower" pkg="drift_simulator" type="follow_policy.py" output="screen">
+    <param name="model" type="str" value="$(arg model)" /> 
+  </node>
   <node name="RL_action" pkg="drift_simulator" type="action.py" output="screen"/>
 </launch>
