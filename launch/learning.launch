@@ -1,5 +1,16 @@
 <launch>
+  <arg name="model_name" default="my_model"/>
+  <arg name="gamma" default="0.9"/>
+  <arg name="epsilon" default="0.1"/>
+  <arg name="alpha" default="0.1"/>
+  <arg name="algorithm" default="qlearning"/>
   <node name="drift_environment" pkg="drift_simulator" type="environment.py" output="screen"/>
-  <node name="learner" pkg="drift_simulator" type="learning.py" output="screen"/>
+  <node name="learner" pkg="drift_simulator" type="learning.py" output="screen">
+    <param name="model_name" type="str" value="$(arg model_name)" /> 
+    <param name="gamma" type="double" value="$(arg gamma)" /> 
+    <param name="epsilon" type="double" value="$(arg epsilon)" /> 
+    <param name="alpha" type="double" value="$(arg alpha)" /> 
+    <param name="algorithm" type="str" value="$(arg algorithm)" /> 
+  </node>
   <node name="RL_action" pkg="drift_simulator" type="action.py" output="screen"/>
 </launch>

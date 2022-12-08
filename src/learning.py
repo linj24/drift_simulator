@@ -26,9 +26,9 @@ class RL(ABC):
         model: str,
         nS: int,
         nA: int,
-        gamma: float = 0.9,
-        epsilon: float = 0.3,
-        alpha: float = 0.1,
+        gamma: float,
+        epsilon: float,
+        alpha: float,
     ):
         self.model = model
         self.nS = nS
@@ -96,9 +96,9 @@ class RL(ABC):
             self.last_state = None
             self.last_action = None
             self.checkpoint.add_datapoint(cp.Metric.POLICY_UPDATES, self.updates_in_current_episode)
-            self.updates_in_current_episode = 0
             self.checkpoint.add_datapoint(cp.Metric.SUCCESSES, t is state.Terminal.GOAL)
             self.checkpoint.add_datapoint(cp.Metric.TIMES, (rospy.Time.now() - self.iteration_start).to_sec())
+            self.updates_in_current_episode = 0
             self.iteration_start = rospy.Time.now()
             self.iteration += 1
             if self.iteration % SAVE_ITERATIONS == 0:
@@ -140,5 +140,14 @@ class QLearning(RL):
 
 
 if __name__ == "__main__":
-    node = QLearning("qlearning_0.5_q", state.N_STATES, len(action.Turn), epsilon=0.1)
+    model_name = rospy.get_param('/learner/model_name', "my_model")
+    gamma = rospy.get_param('/learner/gamma', 0.9)
+    epsilon = rospy.get_param('/learner/epsilon', 0.1)
+    alpha = rospy.get_param('/learner/alpha', 0.1)
+    algorithm = rospy.get_param('/learner/algorithm', "qlearning")
+    if algorithm == "sarsa":
+        node = Sarsa(model_name, state.N_STATES, len(action.Turn), gamma=gamma, epsilon=epsilon, alpha=alpha)
+    else:
+        # default to Q-learning if invalid name given
+        node = QLearning(model_name, state.N_STATES, len(action.Turn), gamma=gamma, epsilon=epsilon, alpha=alpha)
     node.run()
