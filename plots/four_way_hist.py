@@ -14,7 +14,10 @@ MODELS = ["follow_heuristic", "follow_manual", "follow_qlearning_0.5_q_7610", "f
 LABELS = ["Heuristic", "Manual", "Q-Learning", "Sarsa"]
 
 if __name__ == "__main__":
+    # generate a plot for each model in the MODELS list
     for model, label in zip(MODELS, LABELS):
+
+        # load checkpoint
         successes_filename = os.path.join(
             CHECKPOINT_DIR, model, "SUCCESSES.csv"
         )
@@ -25,7 +28,7 @@ if __name__ == "__main__":
         times = np.loadtxt(times_filename)
         succ_times = times[successes]
         valid_times = succ_times[(8 < succ_times) & (succ_times < 24)][:60]
-        plt.title(f"Goal Times: {model}")
+        plt.title(f"Goal Times: {label}")
         plt.xlabel("Count")
         plt.ylabel("Goal time (s)")
         plt.hist(valid_times)

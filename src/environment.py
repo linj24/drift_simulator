@@ -19,6 +19,7 @@ TIMEOUT = rospy.Duration(secs=12)
 
 class Environment:
     """
+    Read in the simulator state and convert to a reinforcement learning state.
     """
     def __init__(self):
 
@@ -109,32 +110,46 @@ class Environment:
             self.model_states_pub.publish(robot_model_state)
 
     def run(self):
+        """Tick at a fixed rate and publish the current state.
+        """
         r = rospy.Rate(10)  # 10hz
         while not rospy.is_shutdown():
+
+            # make sure Gazebo has been initialized
             if self.current_robot_pose is not None and self.current_scan is not None:
                 iteration_time = rospy.Time.now() - self.iteration_start
+
+                # world reset complete
                 if self.reset_world_in_progress and self.corners.at_start(
                     self.current_robot_pose
                 ):
                     self.reset_world_in_progress = False
                     self.iteration_num += 1
                     self.iteration_start = rospy.Time.now()
+
+                # robot at goal
                 elif self.corners.at_goal(self.current_robot_pose):
                     print(f"GOAL: {iteration_time.to_sec()}")
                     self.state_reward_pub.publish(
                         StateReward(state=state.Terminal.GOAL.id, reward=200 * (TIMEOUT - iteration_time).to_sec(), terminal=True)
                     )
                     self.reset_world()
+
+                # robot crashed
                 elif self.corners.collided(self.current_robot_pose):
                     self.state_reward_pub.publish(
                         StateReward(state=state.Terminal.CRASH.id, reward=-1, terminal=True)
                     )
                     self.reset_world()
+
+                # robot timed out
                 elif iteration_time > TIMEOUT:
                     self.state_reward_pub.publish(
                         StateReward(state=state.Terminal.TIMEOUT.id, reward=-1, terminal=True)
                     )
                     self.reset_world()
+
+                # nonterminal state
                 else:
                     s = state.calculate_state(
                         self.current_scan,

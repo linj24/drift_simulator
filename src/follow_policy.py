@@ -12,8 +12,8 @@ import utils.checkpoint as cp
 import utils.state
 
 class FollowPolicy:
-    """A ROS node that performs actions according to a specified policy and
-    records metrics.
+    """Perform actions according to a specified policy and
+    record metrics.
     """
     def __init__(self):
 
@@ -52,7 +52,7 @@ class FollowPolicy:
                 self.action_pub.publish(a)
 
     def run(self):
-        """Execute the node.
+        """Listen for state/reward messages.
         """
         rospy.spin()
 
