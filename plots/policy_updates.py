@@ -16,7 +16,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         checkpoint_filename = sys.argv[1]
         policy_updates_filename = os.path.join(
-            CHECKPOINT_DIR, checkpoint_filename, "policy_updates.csv"
+            CHECKPOINT_DIR, checkpoint_filename, "POLICY_UPDATES.csv"
         )
         policy_updates = list(np.loadtxt(policy_updates_filename, dtype=int))
         plt.title(f"Total Q-Matrix updates: {checkpoint_filename}")

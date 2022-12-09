@@ -226,9 +226,6 @@ def extract_pose_info(
     corner_angle = unit_circle_range(angle_between(pose, corner))
     state.goal = TargetSector.from_angle(goal_angle)
     state.corner = TargetSector.from_angle(corner_angle)
-    # rospy.loginfo(f"GOAL ANGLE: {unit_circle_range(goal_angle) / (2 * np.pi) * 360, goal_angle}")
-    # rospy.loginfo(f"CORNER ANGLE: {unit_circle_range(corner_angle) / (2 * np.pi) * 360, corner_angle}")
-    # rospy.loginfo(f"TURNED: {last_state is not None}, {last_state is not None and last_state.turned_corner}, {np.abs(corner_angle) > np.abs(goal_angle)}")
     state.turned_corner = last_state is not None and (last_state.turned_corner or (
         np.abs(corner_angle) > np.abs(goal_angle)))
     return state

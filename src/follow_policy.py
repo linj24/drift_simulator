@@ -8,24 +8,36 @@ import numpy as np
 from std_msgs.msg import UInt8
 from drift_simulator.msg import StateReward
 
-import utils.checkpoint
+import utils.checkpoint as cp
+import utils.state
 
 class FollowPolicy:
     def __init__(self):
 
         rospy.init_node("follower")
-        model_name = rospy.get_param('~model', "heuristic")
-        rospy.loginfo(f"Loading model {model_name}...")
-        self.policy = np.loadtxt(os.path.join(utils.checkpoint.CHECKPOINT_DIR, model_name, "policy.csv"), dtype=int)
-        self.action_pub = rospy.Publisher("/action", UInt8, queue_size=10)
+        self.model_name = rospy.get_param('~model', "heuristic")
+        rospy.loginfo(f"Loading model {self.model_name}...")
+        self.iterations = 0
+        self.iteration_start = rospy.Time.now()
+        self.checkpoint = cp.Checkpoint(f"follow_{self.model_name}", [cp.Metric.SUCCESSES, cp.Metric.TIMES])
+        if self.model_name != "manual":
+            self.policy = np.loadtxt(os.path.join(cp.CHECKPOINT_DIR, self.model_name, "policy.csv"), dtype=int)
+            self.action_pub = rospy.Publisher("/action", UInt8, queue_size=10)
         self.state_reward_sub = rospy.Subscriber(
             "/state_reward", StateReward, self.process_SR
         )
 
     def process_SR(self, data: StateReward):
-        _, s, _ = data.reward, data.state, data.terminal
-        a = self.policy[s]
-        self.action_pub.publish(a)
+        _, s, t = data.reward, data.state, data.terminal
+        if t:
+            self.checkpoint.add_datapoint(cp.Metric.SUCCESSES, s == utils.state.Terminal.GOAL.id)
+            self.checkpoint.add_datapoint(cp.Metric.TIMES, (rospy.Time.now() - self.iteration_start).to_sec())
+            self.checkpoint.save_checkpoint()
+            self.iteration_start = rospy.Time.now()
+        else:
+            if self.model_name != "manual":
+                a = self.policy[s]
+                self.action_pub.publish(a)
 
     def run(self):
         rospy.spin()

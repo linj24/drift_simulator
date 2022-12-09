@@ -11,6 +11,7 @@ class Metric(Enum):
     SUCCESSES = (1, int)
     TIMES = (2, float)
 
+ALL_METRICS = [Metric.POLICY_UPDATES, Metric.SUCCESSES, Metric.TIMES]
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(sys.argv[0])))
 CHECKPOINT_DIR = os.path.join(PARENT_DIR, "checkpoints")
@@ -47,7 +48,8 @@ class Checkpoint:
     def save_checkpoint(self):
         for metric in self.metrics:
             _, typ = metric.value
+            filename = self.checkpoint_filename(metric.name)
             if typ is int:
-                np.savetxt(self.checkpoint_filename(metric.name), self.metrics[metric], fmt='%i')
+                np.savetxt(filename, self.metrics[metric], fmt='%i')
             else:
-                np.savetxt(self.checkpoint_filename(metric.name), self.metrics[metric])
+                np.savetxt(filename, self.metrics[metric])

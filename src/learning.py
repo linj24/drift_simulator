@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-
 from abc import ABC, abstractmethod
 
 import rospy
@@ -37,7 +34,7 @@ class RL(ABC):
         self.epsilon = epsilon
         self.alpha = alpha
 
-        self.checkpoint = cp.Checkpoint(self.model, [cp.Metric.POLICY_UPDATES, cp.Metric.SUCCESSES, cp.Metric.TIMES])
+        self.checkpoint = cp.Checkpoint(self.model, cp.ALL_METRICS)
 
         rospy.init_node("learner")
 
@@ -96,7 +93,7 @@ class RL(ABC):
             self.last_state = None
             self.last_action = None
             self.checkpoint.add_datapoint(cp.Metric.POLICY_UPDATES, self.updates_in_current_episode)
-            self.checkpoint.add_datapoint(cp.Metric.SUCCESSES, t is state.Terminal.GOAL)
+            self.checkpoint.add_datapoint(cp.Metric.SUCCESSES, s == state.Terminal.GOAL.id)
             self.checkpoint.add_datapoint(cp.Metric.TIMES, (rospy.Time.now() - self.iteration_start).to_sec())
             self.updates_in_current_episode = 0
             self.iteration_start = rospy.Time.now()
