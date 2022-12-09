@@ -131,7 +131,6 @@ class Environment:
                     )
                     self.reset_world()
                 elif iteration_time > TIMEOUT:
-                    print(f"TIMEOUT: {iteration_time.to_sec()}")
                     self.state_reward_pub.publish(
                         StateReward(state=state.Terminal.TIMEOUT.id, reward=-1, terminal=True)
                     )

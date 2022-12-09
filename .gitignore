@@ -135,6 +135,6 @@ dmypy.json
 checkpoints/*
 !checkpoints/heuristic
 !checkpoints/qlearning_0.1_q_1000
-!checkpoints/qlearning_0.5_q_7200
+!checkpoints/qlearning_0.5_q_7610
 !checkpoints/sarsa_0.1_q_1000
-!checkpoints/sarsa_0.5_q_7200
+!checkpoints/sarsa_0.5_q_7610
