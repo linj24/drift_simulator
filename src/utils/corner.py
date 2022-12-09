@@ -26,6 +26,8 @@ COLLISION_TOLERANCE = 0.2
 
 @dataclass
 class Wall:
+    """Representation of a wall in a cornering task.
+    """
     model_name: str
     length: float
     width: float
@@ -33,11 +35,37 @@ class Wall:
     angle: float = 0.0
 
     def move(self, center: Point, angle: float):
+        """Move and rotate a wall to a specific pose in Gazebo.
+
+        Parameters
+        ----------
+        center : Point
+            The new center position of the wall.
+        angle : float
+            The angle from the x-axis to rotate the wall to.
+
+        Returns
+        -------
+        Wall
+            The wall in the new position.
+        """ 
         self.center = center
         self.angle = angle
         return self
 
     def collided(self, pos: Point) -> bool:
+        """Check to see if a point is close enough to a wall to be colliding.
+
+        Parameters
+        ----------
+        pos : Point
+            The point to test.
+
+        Returns
+        -------
+        bool
+            True if a collision is occurring; False otherwise.
+        """
         pos_to_center = np.array([self.center.x - pos.x, self.center.y - pos.y])
         wall_vec = np.array([np.cos(self.angle), np.sin(self.angle)])
         wall_proj = np.dot(wall_vec, pos_to_center) * wall_vec
@@ -48,6 +76,13 @@ class Wall:
 
     @property
     def model_state(self) -> ModelState:
+        """A wall's in ModelState message form for Gazebo to use.
+
+        Returns
+        -------
+        ModelState
+            The wall's ModelState representation.
+        """
         return ModelState(
             model_name=self.model_name,
             pose=Pose(
@@ -59,6 +94,8 @@ class Wall:
 
 
 class Corner:
+    """A corner to drift around, represented by 4 or 5 walls.
+    """
     s1: Wall
     s2: Wall
     l1: Wall
@@ -75,6 +112,13 @@ class Corner:
         self.move(angle)
 
     def move(self, angle: float):
+        """Create a corner at the specified angle.
+
+        Parameters
+        ----------
+        angle : float
+            The angle from the negative x-axis to create the corner at.
+        """
         # create corner out of 4 or 5 walls
         s1_x = self.s1.length / 2
         s1_y = np.sign(np.sin(angle)) * (- PATH_WIDTH / 2)
@@ -111,6 +155,7 @@ class Corner:
         self.l2.move(Point(l2_x, l2_y, 0), angle)
         self.n.move(Point(n_x, n_y, 0), n_angle)
 
+        # move the goal position to the end of the second straight area
         self.goal_position = Point(
             x=s2_x + np.cos(np.pi / 2 - angle) * PATH_WIDTH / 2,
             y=s2_y + np.sin(np.pi / 2 - angle) * PATH_WIDTH / 2,
@@ -119,14 +164,45 @@ class Corner:
 
     @property
     def walls(self) -> list[Wall]:
+        """Return a list of walls that make up the corner.
+
+        Returns
+        -------
+        list[Wall]
+            The walls of the corner in list form.
+        """
         return [self.s1, self.s2, self.l1, self.l2, self.n]
 
     def at_start(self, pose: Pose) -> bool:
+        """Test if an object is at the start of the corner.
+
+        Parameters
+        ----------
+        pose : Pose
+            The pose of the object to test.
+
+        Returns
+        -------
+        bool
+            True if the object is at the start of the corner; False otherwise.
+        """
         return (
             np.sqrt(((pose.position.x) ** 2 + (pose.position.y) ** 2)) <= GOAL_TOLERANCE
         )
 
     def at_goal(self, pose: Pose) -> bool:
+        """Test if an object is at the goal position.
+
+        Parameters
+        ----------
+        pose : Pose
+            The pose of the object to test.
+
+        Returns
+        -------
+        bool
+            True if the object is at the goal position; False otherwise.
+        """
         return (
             np.sqrt(
                 (
@@ -138,6 +214,18 @@ class Corner:
         )
 
     def collided(self, pose: Pose) -> bool:
+        """Test if an object has collided with any of the walls in a corner.
+
+        Parameters
+        ----------
+        pose : Pose
+            The pose of the object to test.
+
+        Returns
+        -------
+        bool
+            True if the object has collided; False otherwise.
+        """
         robot_pos = pose.position
         return any([wall.collided(robot_pos) for wall in self.walls])
 
